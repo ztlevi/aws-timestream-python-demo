@@ -5,8 +5,10 @@ description = ""
 authors = ["Ting Zhou <ztlevi.work@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.8"
 boto3 = "^1.21.18"
+numpy = "^1.22.3"
+pdbpp = "^0.10.3"
 
 [tool.poetry.dev-dependencies]
 
