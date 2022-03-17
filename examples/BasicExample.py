@@ -5,7 +5,9 @@ from utils.QueryUtil import QueryUtil
 
 
 class BasicExample:
-    def __init__(self, database_name, table_name, write_client, query_client, skip_deletion):
+    def __init__(
+        self, database_name, table_name, write_client, query_client, skip_deletion
+    ):
         self.database_name = database_name
         self.table_name = table_name
         self.write_client = write_client
@@ -17,41 +19,45 @@ class BasicExample:
         current_time = WriteUtil.current_milli_time()
 
         dimensions = [
-            {'Name': 'region', 'Value': 'us-east-1'},
-            {'Name': 'az', 'Value': 'az1'},
-            {'Name': 'hostname', 'Value': 'host1'}
+            {"Name": "region", "Value": "us-east-1"},
+            {"Name": "az", "Value": "az1"},
+            {"Name": "hostname", "Value": "host1"},
         ]
 
-        common_attributes = {
-            'Dimensions': dimensions,
-            'Time': current_time
-        }
+        common_attributes = {"Dimensions": dimensions, "Time": current_time}
 
         cpu_utilization = {
-            'Name': 'cpu_utilization',
-            'Value': '13.6',
-            'Type': 'DOUBLE',
+            "Name": "cpu_utilization",
+            "Value": "13.6",
+            "Type": "DOUBLE",
         }
 
         memory_utilization = {
-            'Name': 'memory_utilization',
-            'Value': '40',
-            'Type': 'DOUBLE',
+            "Name": "memory_utilization",
+            "Value": "40",
+            "Type": "DOUBLE",
         }
 
         computational_record = {
-            'MeasureName': 'cpu_memory',
-            'MeasureValues': [cpu_utilization, memory_utilization],
-            'MeasureValueType': 'MULTI',
+            "MeasureName": "cpu_memory",
+            "MeasureValues": [cpu_utilization, memory_utilization],
+            "MeasureValueType": "MULTI",
         }
 
         records = [computational_record]
 
         try:
-            result = self.write_client.write_records(DatabaseName=self.database_name, TableName=self.table_name,
-                                                     Records=records, CommonAttributes=common_attributes)
-            if result and result['ResponseMetadata']:
-                print("WriteRecords Status: [%s]" % result['ResponseMetadata']['HTTPStatusCode'])
+            result = self.write_client.write_records(
+                DatabaseName=self.database_name,
+                TableName=self.table_name,
+                Records=records,
+                CommonAttributes=common_attributes,
+            )
+            if result and result["ResponseMetadata"]:
+                print(
+                    "WriteRecords Status: [%s]"
+                    % result["ResponseMetadata"]["HTTPStatusCode"]
+                )
         except self.write_client.exceptions.RejectedRecordsException as err:
             WriteUtil.print_rejected_records_exceptions(err)
         except Exception as err:
@@ -62,47 +68,47 @@ class BasicExample:
         current_time = WriteUtil.current_milli_time()
 
         dimensions = [
-            {'Name': 'region', 'Value': 'us-east-1'},
-            {'Name': 'az', 'Value': 'az1'},
-            {'Name': 'hostname', 'Value': 'host1'}
+            {"Name": "region", "Value": "us-east-1"},
+            {"Name": "az", "Value": "az1"},
+            {"Name": "hostname", "Value": "host1"},
         ]
 
-        common_attributes = {
-            'Dimensions': dimensions,
-            'Time': current_time
-        }
+        common_attributes = {"Dimensions": dimensions, "Time": current_time}
 
         cpu_utilization = {
-            'Name': 'cpu_utilization',
-            'Value': '13.6',
-            'Type': 'DOUBLE',
+            "Name": "cpu_utilization",
+            "Value": "13.6",
+            "Type": "DOUBLE",
         }
 
         memory_utilization = {
-            'Name': 'memory_utilization',
-            'Value': '40',
-            'Type': 'DOUBLE',
+            "Name": "memory_utilization",
+            "Value": "40",
+            "Type": "DOUBLE",
         }
 
-        active_cores = {
-            'Name': 'active_cores',
-            'Value': '4',
-            'Type': 'BIGINT'
-        }
+        active_cores = {"Name": "active_cores", "Value": "4", "Type": "BIGINT"}
 
         computational_record = {
-            'MeasureName': 'computational_record',
-            'MeasureValues': [cpu_utilization, memory_utilization, active_cores],
-            'MeasureValueType': 'MULTI'
+            "MeasureName": "computational_record",
+            "MeasureValues": [cpu_utilization, memory_utilization, active_cores],
+            "MeasureValueType": "MULTI",
         }
 
         records = [computational_record]
 
         try:
-            result = self.write_client.write_records(DatabaseName=self.database_name, TableName=self.table_name,
-                                                     Records=records, CommonAttributes=common_attributes)
-            if result and result['ResponseMetadata']:
-                print("WriteRecords Status: [%s]" % result['ResponseMetadata']['HTTPStatusCode'])
+            result = self.write_client.write_records(
+                DatabaseName=self.database_name,
+                TableName=self.table_name,
+                Records=records,
+                CommonAttributes=common_attributes,
+            )
+            if result and result["ResponseMetadata"]:
+                print(
+                    "WriteRecords Status: [%s]"
+                    % result["ResponseMetadata"]["HTTPStatusCode"]
+                )
         except self.write_client.exceptions.RejectedRecordsException as err:
             WriteUtil.print_rejected_records_exceptions(err)
         except Exception as err:

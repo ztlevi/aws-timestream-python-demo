@@ -4,6 +4,7 @@ import boto3
 import argparse
 from enum import Enum
 from botocore.config import Config
+from examples.RandomNumberExample import RandomNumberExample
 
 from utils.Constant import *
 
@@ -22,18 +23,32 @@ def main(app_type, csv_file_path, kms_id, stage, region, skip_deletion_string):
     #  - Use SDK DEFAULT_BACKOFF_STRATEGY
     #  - Set RequestTimeout to 20 seconds
     #  - Set max connections to 5000 or higher
-    write_client = session.client('timestream-write',
-                                  config=Config(region_name=region, read_timeout=20, max_pool_connections=5000,
-                                                retries={'max_attempts': 10}))
-    query_client = session.client('timestream-query',
-                                  config=Config(region_name=region))
+    write_client = session.client(
+        "timestream-write",
+        config=Config(
+            region_name=region,
+            read_timeout=20,
+            max_pool_connections=5000,
+            retries={"max_attempts": 10},
+        ),
+    )
+    query_client = session.client("timestream-query", config=Config(region_name=region))
 
     app_type = AppType(app_type)
     if app_type is AppType.BASIC:
-        basic_example = BasicExample(DATABASE_NAME, TABLE_NAME, write_client, query_client, skip_deletion)
+        basic_example = BasicExample(
+            DATABASE_NAME, TABLE_NAME, write_client, query_client, skip_deletion
+        )
         basic_example.run(kms_id)
+    elif app_type is AppType.RANDOM:
+        table_example = RandomNumberExample(
+            DATABASE_NAME, TABLE_NAME, write_client, query_client, skip_deletion
+        )
+        table_example.run()
     elif app_type is AppType.CSV:
-        table_example = CsvIngestionExample(DATABASE_NAME, TABLE_NAME, write_client, query_client, skip_deletion)
+        table_example = CsvIngestionExample(
+            DATABASE_NAME, TABLE_NAME, write_client, query_client, skip_deletion
+        )
         table_example.run(csv_file_path)
     elif app_type is AppType.SCHEDULED_QUERY:
         scheduled_query_example = ScheduledQueryExample(
@@ -45,7 +60,7 @@ def main(app_type, csv_file_path, kms_id, stage, region, skip_deletion_string):
             SQ_RESULT_TABLE,
             write_client,
             query_client,
-            skip_deletion
+            skip_deletion,
         )
         scheduled_query_example.run()
     elif app_type is AppType.SCHEDULED_QUERY_ERROR:
@@ -59,7 +74,7 @@ def main(app_type, csv_file_path, kms_id, stage, region, skip_deletion_string):
             write_client,
             query_client,
             skip_deletion,
-            fail_on_execution=True
+            fail_on_execution=True,
         )
         scheduled_query_error_example.run()
     elif app_type is AppType.CLEANUP:
@@ -74,30 +89,42 @@ class BaseEnum(Enum):
 
 
 class AppType(BaseEnum):
-    BASIC = 'basic'
-    CSV = 'csv'
-    SCHEDULED_QUERY = 'sq'
-    SCHEDULED_QUERY_ERROR = 'sq-error'
-    CLEANUP = 'cleanup'
+    BASIC = "basic"
+    RANDOM = "random"
+    CSV = "csv"
+    SCHEDULED_QUERY = "sq"
+    SCHEDULED_QUERY_ERROR = "sq-error"
+    CLEANUP = "cleanup"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t",
-                        "--type",
-                        default=AppType.BASIC.value,
-                        nargs="?",
-                        choices=AppType.list(),
-                        help="choose type of workload to run (default: %(default)s)")
+    parser.add_argument(
+        "-t",
+        "--type",
+        default=AppType.BASIC.value,
+        nargs="?",
+        choices=AppType.list(),
+        help="choose type of workload to run (default: %(default)s)",
+    )
     parser.add_argument("-f", "--csv_file_path", help="file to ingest")
     parser.add_argument("-k", "--kmsId", help="KMS key for updating the database")
     parser.add_argument("-s", "--stage", default="prod")
     parser.add_argument("-r", "--region", default="us-east-1")
-    parser.add_argument("-sd",
-                        "--skip_deletion",
-                        default="true",
-                        choices=("true", "false"),
-                        help="skip deletion of table and database created by this script")
+    parser.add_argument(
+        "-sd",
+        "--skip_deletion",
+        default="true",
+        choices=("true", "false"),
+        help="skip deletion of table and database created by this script",
+    )
     args = parser.parse_args()
 
-    main(args.type, args.csv_file_path, args.kmsId, args.stage, args.region, args.skip_deletion)
+    main(
+        args.type,
+        args.csv_file_path,
+        args.kmsId,
+        args.stage,
+        args.region,
+        args.skip_deletion,
+    )

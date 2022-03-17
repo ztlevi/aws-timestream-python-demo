@@ -3,22 +3,21 @@ import json
 
 
 class TimestreamDependencyHelper:
-
     def __init__(self, region):
         self.region = region
-        self.sns_client = boto3.client('sns', region_name=region)
-        self.iam_client = boto3.client('iam', region_name=region)
-        self.sqs_client = boto3.client('sqs', region_name=region)
+        self.sns_client = boto3.client("sns", region_name=region)
+        self.iam_client = boto3.client("iam", region_name=region)
+        self.sqs_client = boto3.client("sqs", region_name=region)
         self.account_id = boto3.client("sts").get_caller_identity()["Account"]
-        self.s3_client = boto3.client('s3', region_name=region)
-        self.s3_resource = boto3.resource('s3')
+        self.s3_client = boto3.client("s3", region_name=region)
+        self.s3_resource = boto3.resource("s3")
 
     def create_sns(self, topic_name):
         print("\nCreating sns topic")
         try:
             response = self.sns_client.create_topic(Name=topic_name)
-            print("Sns topic created successfully, topic arn:", response['TopicArn'])
-            return response['TopicArn']
+            print("Sns topic created successfully, topic arn:", response["TopicArn"])
+            return response["TopicArn"]
         except Exception as err:
             print("Failed creating sns: ", err)
             raise err
@@ -36,17 +35,18 @@ class TimestreamDependencyHelper:
         print("\nCreating sqs queue")
         try:
             response = self.sqs_client.create_queue(QueueName=queue_name)
-            print("Sqs queue created successfully, queue url:", response['QueueUrl'])
-            return response['QueueUrl']
+            print("Sqs queue created successfully, queue url:", response["QueueUrl"])
+            return response["QueueUrl"]
         except Exception as err:
             print("Failed creating sqs: ", err)
             raise err
 
     def get_queue_arn(self, queue_url):
         try:
-            response = self.sqs_client.get_queue_attributes(QueueUrl=queue_url,
-                                                            AttributeNames=['QueueArn'])
-            return response['Attributes']['QueueArn']
+            response = self.sqs_client.get_queue_attributes(
+                QueueUrl=queue_url, AttributeNames=["QueueArn"]
+            )
+            return response["Attributes"]["QueueArn"]
         except Exception as err:
             print("Failed getting sqs queue arn: ", err)
             raise err
@@ -58,22 +58,18 @@ class TimestreamDependencyHelper:
                 {
                     "Sid": "topic-subscription-" + topic_arn,
                     "Effect": "Allow",
-                    "Principal": {
-                        "AWS": "*"
-                    },
+                    "Principal": {"AWS": "*"},
                     "Action": "sqs:SendMessage",
                     "Resource": queue_arn,
-                    "Condition": {
-                        "ArnLike": {
-                            "aws:SourceArn": topic_arn
-                        }
-                    }
+                    "Condition": {"ArnLike": {"aws:SourceArn": topic_arn}},
                 }
-            ]
+            ],
         }
         access_policy = json.dumps(access_policy)
         try:
-            self.sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes={'Policy': access_policy})
+            self.sqs_client.set_queue_attributes(
+                QueueUrl=queue_url, Attributes={"Policy": access_policy}
+            )
         except Exception as err:
             print("Failed setting sqs queue policy: ", err)
             raise err
@@ -81,12 +77,17 @@ class TimestreamDependencyHelper:
     def subscribe_to_sns_topic(self, topic_arn, queue_arn):
         print("Subscribing queue to sns topic")
         try:
-            response = self.sns_client.subscribe(TopicArn=topic_arn,
-                                                 Protocol='sqs',
-                                                 Endpoint=queue_arn,
-                                                 ReturnSubscriptionArn=True)
-            print("Successfully subscribed to sns topic, subscription arn is :", response['SubscriptionArn'])
-            return response['SubscriptionArn']
+            response = self.sns_client.subscribe(
+                TopicArn=topic_arn,
+                Protocol="sqs",
+                Endpoint=queue_arn,
+                ReturnSubscriptionArn=True,
+            )
+            print(
+                "Successfully subscribed to sns topic, subscription arn is :",
+                response["SubscriptionArn"],
+            )
+            return response["SubscriptionArn"]
         except Exception as err:
             print("Failed subscribing to sns: ", err)
             raise err
@@ -100,10 +101,11 @@ class TimestreamDependencyHelper:
 
     def receive_message(self, queue_url):
         try:
-            response = self.sqs_client.receive_message(QueueUrl=queue_url,
-                                                       WaitTimeSeconds=20)
-            if 'Messages' in response and response['Messages']:
-                response = response['Messages'][0].get('Body', '{}')
+            response = self.sqs_client.receive_message(
+                QueueUrl=queue_url, WaitTimeSeconds=20
+            )
+            if "Messages" in response and response["Messages"]:
+                response = response["Messages"][0].get("Body", "{}")
                 response = json.loads(response)
                 return response
             return None
@@ -123,25 +125,27 @@ class TimestreamDependencyHelper:
     def create_role(self, role_name, stage, region):
         print("\nCreating IAM role for scheduled query")
         assumed_role_policy_document = {
-            'Version': '2012-10-17',
-            'Statement': [
+            "Version": "2012-10-17",
+            "Statement": [
                 {
-                    'Effect': 'Allow',
-                    'Principal': {
-                        "Service": self.get_service_name(stage, region)
-                    },
-                    'Action': 'sts:AssumeRole'
+                    "Effect": "Allow",
+                    "Principal": {"Service": self.get_service_name(stage, region)},
+                    "Action": "sts:AssumeRole",
                 }
-            ]
+            ],
         }
         assumed_role_policy_document = json.dumps(assumed_role_policy_document)
         try:
-            response = self.iam_client.create_role(Path='/',
-                                                   RoleName=role_name,
-                                                   AssumeRolePolicyDocument=assumed_role_policy_document
-                                                   )
-            print("Successfully created IAM role for accessing scheduled query: ", response['Role']['Arn'])
-            return response['Role']['Arn']
+            response = self.iam_client.create_role(
+                Path="/",
+                RoleName=role_name,
+                AssumeRolePolicyDocument=assumed_role_policy_document,
+            )
+            print(
+                "Successfully created IAM role for accessing scheduled query: ",
+                response["Role"]["Arn"],
+            )
+            return response["Role"]["Arn"]
         except self.iam_client.exceptions.EntityAlreadyExistsException:
             print("Role already exists")
             return f"arn:aws:iam::{self.account_id}:role/{role_name}"
@@ -161,31 +165,32 @@ class TimestreamDependencyHelper:
     def create_policy(self, policy_name):
         print("Creating policy for Scheduled Query access")
         policy_document = {
-            'Version': '2012-10-17',
-            'Statement': [
+            "Version": "2012-10-17",
+            "Statement": [
                 {
-                    'Action': [
-                        'kms:Decrypt',
-                        'sns:Publish',
-                        'timestream:describeEndpoints',
-                        'timestream:Select',
-                        'timestream:SelectValues',
-                        'timestream:WriteRecords',
-                        's3:GetObject',
-                        's3:List*',
-                        's3:Put*',
+                    "Action": [
+                        "kms:Decrypt",
+                        "sns:Publish",
+                        "timestream:describeEndpoints",
+                        "timestream:Select",
+                        "timestream:SelectValues",
+                        "timestream:WriteRecords",
+                        "s3:GetObject",
+                        "s3:List*",
+                        "s3:Put*",
                     ],
-                    'Resource': '*',
-                    'Effect': 'Allow'
+                    "Resource": "*",
+                    "Effect": "Allow",
                 }
-            ]
+            ],
         }
         policy_document = json.dumps(policy_document)
         try:
-            response = self.iam_client.create_policy(PolicyName=policy_name,
-                                                     PolicyDocument=policy_document)
-            print("Successfully created policy: ", response['Policy']['Arn'])
-            return response['Policy']['Arn']
+            response = self.iam_client.create_policy(
+                PolicyName=policy_name, PolicyDocument=policy_document
+            )
+            print("Successfully created policy: ", response["Policy"]["Arn"])
+            return response["Policy"]["Arn"]
         except self.iam_client.exceptions.EntityAlreadyExistsException as e:
             print("Policy already exists")
             return f"arn:aws:iam::{self.account_id}:policy/{policy_name}"
@@ -205,8 +210,7 @@ class TimestreamDependencyHelper:
     def attach_policy_to_role(self, role_name, policy_arn):
         print("Attaching policy to role: ", role_name)
         try:
-            self.iam_client.attach_role_policy(RoleName=role_name,
-                                               PolicyArn=policy_arn)
+            self.iam_client.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
             print("Successfully attached policy to role")
         except Exception as err:
             print("Failed attaching policy to role: ", err)
@@ -215,8 +219,7 @@ class TimestreamDependencyHelper:
     def detach_policy_from_role(self, role_name, policy_arn):
         print("\nDetaching policy from role: ", role_name)
         try:
-            self.iam_client.detach_role_policy(RoleName=role_name,
-                                               PolicyArn=policy_arn)
+            self.iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
             print("Successfully detached policy from role")
         except Exception as err:
             # Not raising an exception here as we want other cleanup to continue
@@ -231,11 +234,13 @@ class TimestreamDependencyHelper:
     def create_s3_bucket(self, bucket_name):
         print("\nCreating S3 bucket")
         try:
-            if self.region == 'us-east-1':
+            if self.region == "us-east-1":
                 self.s3_client.create_bucket(Bucket=bucket_name)
             else:
-                self.s3_client.create_bucket(Bucket=bucket_name,
-                                             CreateBucketConfiguration={'LocationConstraint': self.region})
+                self.s3_client.create_bucket(
+                    Bucket=bucket_name,
+                    CreateBucketConfiguration={"LocationConstraint": self.region},
+                )
             print("Successfully created S3 bucket: ", bucket_name)
             return bucket_name
         except Exception as err:

@@ -26,32 +26,37 @@ class WriteUtil:
         enable_magnetic_store_writes=True,
         magnetic_store_s3_bucket=None,
         memory_retention=HT_TTL_HOURS,
-        magnetic_retention=CT_TTL_DAYS
+        magnetic_retention=CT_TTL_DAYS,
     ):
         print("Creating table")
         retention_properties = {
-            'MemoryStoreRetentionPeriodInHours': memory_retention,
-            'MagneticStoreRetentionPeriodInDays': magnetic_retention
+            "MemoryStoreRetentionPeriodInHours": memory_retention,
+            "MagneticStoreRetentionPeriodInDays": magnetic_retention,
         }
         magnetic_store_write_properties = {
-            'EnableMagneticStoreWrites': enable_magnetic_store_writes
+            "EnableMagneticStoreWrites": enable_magnetic_store_writes
         }
         if magnetic_store_s3_bucket:
-            magnetic_store_write_properties['MagneticStoreRejectedDataLocation'] = {
-                'S3Configuration': {
-                    'BucketName': magnetic_store_s3_bucket,
-                    'EncryptionOption': "SSE_S3"
+            magnetic_store_write_properties["MagneticStoreRejectedDataLocation"] = {
+                "S3Configuration": {
+                    "BucketName": magnetic_store_s3_bucket,
+                    "EncryptionOption": "SSE_S3",
                 }
             }
 
         try:
-            self.client.create_table(DatabaseName=database_name, TableName=table_name,
-                                     RetentionProperties=retention_properties,
-                                     MagneticStoreWriteProperties=magnetic_store_write_properties)
+            self.client.create_table(
+                DatabaseName=database_name,
+                TableName=table_name,
+                RetentionProperties=retention_properties,
+                MagneticStoreWriteProperties=magnetic_store_write_properties,
+            )
             print("Table [%s] successfully created." % table_name)
         except self.client.exceptions.ConflictException:
-            print("Table [%s] exists on database [%s]. Skipping table creation" % (
-                table_name, database_name))
+            print(
+                "Table [%s] exists on database [%s]. Skipping table creation"
+                % (table_name, database_name)
+            )
         except Exception as err:
             print("Create table failed:", err)
             raise err
@@ -64,13 +69,16 @@ class WriteUtil:
         magnetic_retention=CT_TTL_DAYS,
     ):
         retention_properties = {
-            'MemoryStoreRetentionPeriodInHours': memory_retention,
-            'MagneticStoreRetentionPeriodInDays': magnetic_retention
+            "MemoryStoreRetentionPeriodInHours": memory_retention,
+            "MagneticStoreRetentionPeriodInDays": magnetic_retention,
         }
 
         try:
-            self.client.update_table(DatabaseName=database_name, TableName=table_name,
-                                     RetentionProperties=retention_properties)
+            self.client.update_table(
+                DatabaseName=database_name,
+                TableName=table_name,
+                RetentionProperties=retention_properties,
+            )
             print("Table updated.")
         except Exception as err:
             print("Update table failed:", err)
@@ -78,9 +86,14 @@ class WriteUtil:
     def delete_table(self, database_name, table_name):
         print(f"Deleting Table: {table_name}")
         try:
-            result = self.client.delete_table(DatabaseName=database_name, TableName=table_name)
-            if result and result['ResponseMetadata']:
-                print("Delete table status [%s]" % result['ResponseMetadata']['HTTPStatusCode'])
+            result = self.client.delete_table(
+                DatabaseName=database_name, TableName=table_name
+            )
+            if result and result["ResponseMetadata"]:
+                print(
+                    "Delete table status [%s]"
+                    % result["ResponseMetadata"]["HTTPStatusCode"]
+                )
         except self.client.exceptions.ResourceNotFoundException:
             print("Table [%s] doesn't exist" % table_name)
         except Exception as err:
@@ -91,8 +104,11 @@ class WriteUtil:
         print(f"Deleting Database: {database_name}")
         try:
             result = self.client.delete_database(DatabaseName=database_name)
-            if result and result['ResponseMetadata']:
-                print("Delete database status [%s]" % result['ResponseMetadata']['HTTPStatusCode'])
+            if result and result["ResponseMetadata"]:
+                print(
+                    "Delete database status [%s]"
+                    % result["ResponseMetadata"]["HTTPStatusCode"]
+                )
         except self.client.exceptions.ResourceNotFoundException:
             print("database [%s] doesn't exist" % database_name)
         except Exception as err:
@@ -115,7 +131,9 @@ class WriteUtil:
         print("Describing database")
         try:
             result = self.client.describe_database(DatabaseName=database_name)
-            print("Database [%s] has id [%s]" % (database_name, result['Database']['Arn']))
+            print(
+                "Database [%s] has id [%s]" % (database_name, result["Database"]["Arn"])
+            )
         except self.client.exceptions.ResourceNotFoundException:
             print("Database doesn't exist")
         except Exception as err:
@@ -124,9 +142,13 @@ class WriteUtil:
     def update_database(self, database_name, kms_id):
         print("Updating database")
         try:
-            result = self.client.update_database(DatabaseName=database_name, KmsKeyId=kms_id)
-            print("Database [%s] was updated to use kms [%s] successfully" % (database_name,
-                                                                              result['Database']['KmsKeyId']))
+            result = self.client.update_database(
+                DatabaseName=database_name, KmsKeyId=kms_id
+            )
+            print(
+                "Database [%s] was updated to use kms [%s] successfully"
+                % (database_name, result["Database"]["KmsKeyId"])
+            )
         except self.client.exceptions.ResourceNotFoundException:
             print("Database doesn't exist")
         except Exception as err:
@@ -136,20 +158,22 @@ class WriteUtil:
         print("Listing databases")
         try:
             result = self.client.list_databases(MaxResults=5)
-            self.print_databases(result['Databases'])
-            next_token = result.get('NextToken', None)
+            self.print_databases(result["Databases"])
+            next_token = result.get("NextToken", None)
             while next_token:
                 result = self.client.list_databases(NextToken=next_token, MaxResults=5)
-                self.print_databases(result['Databases'])
-                next_token = result.get('NextToken', None)
+                self.print_databases(result["Databases"])
+                next_token = result.get("NextToken", None)
         except Exception as err:
             print("List databases failed:", err)
 
     def describe_table(self, database_name, table_name):
         print("Describing table")
         try:
-            result = self.client.describe_table(DatabaseName=database_name, TableName=table_name)
-            print("Table [%s] has id [%s]" % (table_name, result['Table']['Arn']))
+            result = self.client.describe_table(
+                DatabaseName=database_name, TableName=table_name
+            )
+            print("Table [%s] has id [%s]" % (table_name, result["Table"]["Arn"]))
         except self.client.exceptions.ResourceNotFoundException:
             print("Table doesn't exist")
         except Exception as err:
@@ -159,23 +183,23 @@ class WriteUtil:
         print("Listing tables")
         try:
             result = self.client.list_tables(DatabaseName=database_name, MaxResults=5)
-            self.print_tables(result['Tables'])
-            next_token = result.get('NextToken', None)
+            self.print_tables(result["Tables"])
+            next_token = result.get("NextToken", None)
             while next_token:
-                result = self.client.list_tables(DatabaseName=database_name,
-                                                 NextToken=next_token, MaxResults=5)
-                self.print_tables(result['Tables'])
-                next_token = result.get('NextToken', None)
+                result = self.client.list_tables(
+                    DatabaseName=database_name, NextToken=next_token, MaxResults=5
+                )
+                self.print_tables(result["Tables"])
+                next_token = result.get("NextToken", None)
         except Exception as err:
             print("List tables failed:", err)
 
     @staticmethod
     def print_tables(tables):
         for table in tables:
-            print(table['TableName'])
+            print(table["TableName"])
 
     @staticmethod
     def print_databases(databases):
         for database in databases:
-            print(database['DatabaseName'])
-
+            print(database["DatabaseName"])
