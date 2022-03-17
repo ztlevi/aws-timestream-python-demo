@@ -1,0 +1,13 @@
+repos:
+  - repo: https://github.com/python/black
+    rev: 22.1.0
+    hooks:
+      - id: black
+  - repo: https://github.com/awslabs/git-secrets
+    rev: master
+    hooks:
+      - id: git-secrets
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.6.0
+    hooks:
+      - id: prettier
