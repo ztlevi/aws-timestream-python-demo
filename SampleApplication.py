@@ -45,28 +45,28 @@ def main(
         )
         basic_example.run(kms_id)
     elif app_type is AppType.RANDOM:
+        # def random_inject(table_id, multi_thread):
+        #     table_example = RandomNumberExample(
+        #         DATABASE_NAME,
+        #         "random_table_" + str(table_id),
+        #         write_client,
+        #         query_client,
+        #         skip_deletion,
+        #         multi_thread=multi_thread,
+        #     )
+        #     table_example.run()
 
-        def random_inject(table_id, multi_thread):
-            table_example = RandomNumberExample(
-                DATABASE_NAME,
-                "random_table_" + str(table_id),
-                write_client,
-                query_client,
-                skip_deletion,
-                multi_thread=multi_thread,
-            )
-            table_example.run()
-
-        pool = ThreadPool(processes=4)
-        pool.map(functools.partial(random_inject, multi_thread=False), [1, 2, 3, 4])
-        # table_example = RandomNumberExample(
-        #     DATABASE_NAME,
-        #     TABLE_NAME,
-        #     write_client,
-        #     query_client,
-        #     skip_deletion,
-        #     multi_thread=multi_thread,
-        # )
+        # pool = ThreadPool(processes=4)
+        # pool.map(functools.partial(random_inject, multi_thread=False), [1, 2, 3, 4])
+        table_example = RandomNumberExample(
+            DATABASE_NAME,
+            TABLE_NAME,
+            write_client,
+            query_client,
+            skip_deletion,
+            multi_thread=True,
+        )
+        table_example.run()
 
     elif app_type is AppType.CSV:
         table_example = CsvIngestionExample(

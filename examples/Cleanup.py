@@ -12,4 +12,6 @@ class Cleanup:
 
     def run(self):
         self.write_util.delete_table(self.database_name, self.table_name)
+        for i in range(4):
+            self.write_util.delete_table(self.database_name, f"random_table_{i+1}")
         self.write_util.delete_database(self.database_name)

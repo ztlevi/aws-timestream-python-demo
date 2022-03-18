@@ -1,15 +1,17 @@
 #!/usr/bin/python
 
 from copy import deepcopy
+from functools import partial
 from utils.QueryUtil import QueryUtil
 from utils.WriteUtil import WriteUtil
 from threading import Thread
+from itertools import islice
 import multiprocessing
 from multiprocessing.pool import ThreadPool
 import numpy as np
 import time
 
-NUM_PROCESSES = 20
+NUM_PROCESSES = 32
 
 
 class RandomNumberExample:
@@ -33,12 +35,12 @@ class RandomNumberExample:
         self.skip_deletion = skip_deletion
         self.multi_thread = multi_thread
 
-    def bulk_write_records(self):
+    def generate_records(self):
         records = []
         current_time = time.time() * 1000
 
         # extracting each data row one by one
-        num_records = 10000
+        num_records = 1000000
         idxes = np.arange(num_records)
         np.random.shuffle(idxes)
         for i in range(num_records):
@@ -59,27 +61,27 @@ class RandomNumberExample:
                 }
             )
             records.append(record)
+        return records
 
-            if self.multi_thread:
-                pool = ThreadPool(processes=NUM_PROCESSES)
-                if len(records) == 100 * NUM_PROCESSES:
-                    it_records = []
-                    for pidx in range(NUM_PROCESSES):
-                        it_records.append(
-                            (
-                                records[pidx * 100 : (pidx + 1) * 100],
-                                i - (2 - pidx) * 100,
-                            )
-                        )
+    def bulk_write_records(self):
+        records = self.generate_records()
 
-                    pool.starmap(self.__submit_batch, it_records)
-                    records = []
-            else:
-                if len(records) == 100:
-                    self.__submit_batch(records, i)
-                    records = []
+        def group_elements(lst, chunk_size):
+            lst = iter(lst)
+            return iter(lambda: tuple(islice(lst, chunk_size)), ())
 
-        print("Ingested %d records" % num_records)
+        batches = list(group_elements(records, len(records) // NUM_PROCESSES))
+        with ThreadPool(NUM_PROCESSES) as pool:
+            pool.map(partial(self.write_batch, batches), list(range(NUM_PROCESSES)))
+
+    def write_batch(self, batches, batch_idx):
+        records = []
+        for i in range(len(batches[batch_idx])):
+            records.append(batches[batch_idx][i])
+            if len(records) == 100:
+                self.__submit_batch(records, i)
+                records = []
+        print("Ingested %d records" % len(batches[batch_idx]))
 
     def __submit_batch(self, records, n):
         result = None
