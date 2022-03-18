@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from multiprocessing.pool import ThreadPool
 import boto3
 import argparse
 from enum import Enum
@@ -14,7 +15,9 @@ from examples.ScheduledQueryExample import ScheduledQueryExample
 from examples.Cleanup import Cleanup
 
 
-def main(app_type, csv_file_path, kms_id, stage, region, skip_deletion_string):
+def main(
+    app_type, csv_file_path, kms_id, stage, region, skip_deletion_string, multi_thread
+):
     session = boto3.Session()
     skip_deletion = skip_deletion_string == "true"
 
@@ -41,10 +44,21 @@ def main(app_type, csv_file_path, kms_id, stage, region, skip_deletion_string):
         )
         basic_example.run(kms_id)
     elif app_type is AppType.RANDOM:
-        table_example = RandomNumberExample(
-            DATABASE_NAME, TABLE_NAME, write_client, query_client, skip_deletion
-        )
-        table_example.run()
+
+        def random_inject(table_id):
+            table_example = RandomNumberExample(
+                DATABASE_NAME,
+                "random_table_" + str(table_id),
+                write_client,
+                query_client,
+                skip_deletion,
+                multi_thread=False,
+            )
+            table_example.run()
+
+        pool = ThreadPool(processes=4)
+        pool.map(random_inject, [1, 2, 3, 4])
+
     elif app_type is AppType.CSV:
         table_example = CsvIngestionExample(
             DATABASE_NAME, TABLE_NAME, write_client, query_client, skip_deletion
@@ -111,6 +125,7 @@ if __name__ == "__main__":
     parser.add_argument("-k", "--kmsId", help="KMS key for updating the database")
     parser.add_argument("-s", "--stage", default="prod")
     parser.add_argument("-r", "--region", default="us-east-1")
+    parser.add_argument("-m", "--multi_thread", action="store_true", default=False)
     parser.add_argument(
         "-sd",
         "--skip_deletion",
@@ -127,4 +142,5 @@ if __name__ == "__main__":
         args.stage,
         args.region,
         args.skip_deletion,
+        args.multi_thread,
     )

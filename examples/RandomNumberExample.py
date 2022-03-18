@@ -1,15 +1,26 @@
 #!/usr/bin/python
 
-import csv
+from copy import deepcopy
 from utils.QueryUtil import QueryUtil
 from utils.WriteUtil import WriteUtil
+from threading import Thread
+import multiprocessing
+from multiprocessing.pool import ThreadPool
 import numpy as np
 import time
+
+NUM_PROCESSES = 20
 
 
 class RandomNumberExample:
     def __init__(
-        self, database_name, table_name, write_client, query_client, skip_deletion
+        self,
+        database_name,
+        table_name,
+        write_client,
+        query_client,
+        skip_deletion,
+        multi_thread=True,
     ):
         self.database_name = database_name
         self.table_name = table_name
@@ -20,13 +31,14 @@ class RandomNumberExample:
             self.query_client, self.database_name, self.table_name
         )
         self.skip_deletion = skip_deletion
+        self.multi_thread = multi_thread
 
     def bulk_write_records(self):
         records = []
         current_time = time.time() * 1000
 
         # extracting each data row one by one
-        num_records = 1000000
+        num_records = 10000
         idxes = np.arange(num_records)
         np.random.shuffle(idxes)
         for i in range(num_records):
@@ -48,9 +60,24 @@ class RandomNumberExample:
             )
             records.append(record)
 
-            if len(records) == 100:
-                self.__submit_batch(records, i)
-                records = []
+            if self.multi_thread:
+                pool = ThreadPool(processes=NUM_PROCESSES)
+                if len(records) == 100 * NUM_PROCESSES:
+                    it_records = []
+                    for pidx in range(NUM_PROCESSES):
+                        it_records.append(
+                            (
+                                records[pidx * 100 : (pidx + 1) * 100],
+                                i - (2 - pidx) * 100,
+                            )
+                        )
+
+                    pool.starmap(self.__submit_batch, it_records)
+                    records = []
+            else:
+                if len(records) == 100:
+                    self.__submit_batch(records, i)
+                    records = []
 
         print("Ingested %d records" % num_records)
 
@@ -85,7 +112,12 @@ class RandomNumberExample:
             # Create base table and ingest records
             self.write_util.create_database(self.database_name)
             self.write_util.create_table(self.database_name, self.table_name)
+            stime = time.time()
             self.bulk_write_records()
+            etime = time.time()
+            print(
+                f"------------------ Bulk write takes {etime-stime} -------------------"
+            )
             # self.run_sample_queries()
 
         finally:
