@@ -17,7 +17,7 @@ from examples.Cleanup import Cleanup
 
 
 def main(
-    app_type, csv_file_path, kms_id, stage, region, skip_deletion_string, multi_thread
+    app_type, csv_file_path, kms_id, stage, region, skip_deletion_string, num_thread
 ):
     session = boto3.Session()
     skip_deletion = skip_deletion_string == "true"
@@ -64,7 +64,7 @@ def main(
             write_client,
             query_client,
             skip_deletion,
-            multi_thread=True,
+            num_thread=num_thread,
         )
         table_example.run()
 
@@ -134,7 +134,7 @@ if __name__ == "__main__":
     parser.add_argument("-k", "--kmsId", help="KMS key for updating the database")
     parser.add_argument("-s", "--stage", default="prod")
     parser.add_argument("-r", "--region", default="us-east-1")
-    parser.add_argument("-m", "--multi_thread", action="store_true", default=False)
+    parser.add_argument("-n", "--num_thread", type=int, default=1)
     parser.add_argument(
         "-sd",
         "--skip_deletion",
@@ -143,6 +143,8 @@ if __name__ == "__main__":
         help="skip deletion of table and database created by this script",
     )
     args = parser.parse_args()
+    if args.num_thread < 1:
+        raise argparse.ArgumentTypeError("--num_thread should be greater than 0")
 
     main(
         args.type,
@@ -151,5 +153,5 @@ if __name__ == "__main__":
         args.stage,
         args.region,
         args.skip_deletion,
-        args.multi_thread,
+        args.num_thread,
     )

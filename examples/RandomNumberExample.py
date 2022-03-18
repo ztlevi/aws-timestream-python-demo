@@ -11,7 +11,7 @@ from multiprocessing.pool import ThreadPool
 import numpy as np
 import time
 
-NUM_PROCESSES = 32
+MAX_BATCH_SIZE = 100
 
 
 class RandomNumberExample:
@@ -22,7 +22,7 @@ class RandomNumberExample:
         write_client,
         query_client,
         skip_deletion,
-        multi_thread=True,
+        num_thread=1,
     ):
         self.database_name = database_name
         self.table_name = table_name
@@ -33,14 +33,14 @@ class RandomNumberExample:
             self.query_client, self.database_name, self.table_name
         )
         self.skip_deletion = skip_deletion
-        self.multi_thread = multi_thread
+        self.num_thread = num_thread
 
     def generate_records(self):
         records = []
         current_time = time.time() * 1000
 
         # extracting each data row one by one
-        num_records = 1000000
+        num_records = 200000
         idxes = np.arange(num_records)
         np.random.shuffle(idxes)
         for i in range(num_records):
@@ -61,26 +61,32 @@ class RandomNumberExample:
                 }
             )
             records.append(record)
-        return records
+        return np.array(records)
 
     def bulk_write_records(self):
         records = self.generate_records()
 
-        def group_elements(lst, chunk_size):
-            lst = iter(lst)
-            return iter(lambda: tuple(islice(lst, chunk_size)), ())
-
-        batches = list(group_elements(records, len(records) // NUM_PROCESSES))
-        with ThreadPool(NUM_PROCESSES) as pool:
-            pool.map(partial(self.write_batch, batches), list(range(NUM_PROCESSES)))
+        if self.num_thread > 1:
+            batches = np.array_split(records, self.num_thread)
+            with ThreadPool(self.num_thread) as pool:
+                pool.map(
+                    partial(self.write_batch, batches), list(range(self.num_thread))
+                )
+        else:
+            self.write_batch(
+                records[
+                    np.newaxis,
+                ],
+                0,
+            )
 
     def write_batch(self, batches, batch_idx):
-        records = []
-        for i in range(len(batches[batch_idx])):
-            records.append(batches[batch_idx][i])
-            if len(records) == 100:
-                self.__submit_batch(records, i)
-                records = []
+        cur_batch = batches[batch_idx]
+        num_split = len(cur_batch) // MAX_BATCH_SIZE + (
+            len(cur_batch) % MAX_BATCH_SIZE != 0
+        )
+        for i, batch in enumerate(np.array_split(cur_batch, num_split)):
+            self.__submit_batch(batch.tolist(), (i + 1) * MAX_BATCH_SIZE)
         print("Ingested %d records" % len(batches[batch_idx]))
 
     def __submit_batch(self, records, n):

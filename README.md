@@ -69,8 +69,8 @@ Be wary of this argument in real production environment.
 ```
 python SampleApplication.py --type cleanup
 sleep 5
-python SampleApplication.py  --type random  --region us-east-1
-python SampleApplication.py  --type random  --region us-east-1 --multi_thread
+/usr/bin/time -v python SampleApplication.py  --type random  --region us-east-1
+/usr/bin/time -v python SampleApplication.py  --type random  --region us-east-1 --num_thread 1
 ```
 
 ### Run example to ingest the multi measure data in `sample-multi.csv`
