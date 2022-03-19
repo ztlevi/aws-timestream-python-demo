@@ -35,50 +35,62 @@ class RandomNumberExample:
         self.skip_deletion = skip_deletion
         self.num_thread = num_thread
 
+    def create_a_counter_record(self, i, current_time, idx):
+        record = {
+            "Dimensions": [
+                {"Name": "id", "Value": str(i)},
+                {"Name": "track_id", "Value": str(np.random.randint(10))},
+            ],
+            "Time": str(int(current_time - idx / 1000)),
+        }
+
+        record.update(
+            {
+                "MeasureName": "utilization",
+                "MeasureValueType": "DOUBLE",
+                "MeasureValue": str(np.random.randint(100)),
+            }
+        )
+        return record
+
+    def create_a_slice_record(self, i, current_time, idx):
+        record = {
+            "Dimensions": [
+                {"Name": "id", "Value": str(i)},
+                {"Name": "track_id", "Value": str(np.random.randint(10))},
+                {"Name": "dur", "Value": str(i)},
+            ],
+            "Time": str(int(current_time - idx / 1000)),
+        }
+
+        record.update(
+            {
+                "MeasureName": "kernel_name",
+                "MeasureValueType": "VARCHAR",
+                "MeasureValue": str("Random KernelName"),
+            }
+        )
+        return record
+
     def generate_records(self):
         records = []
         current_time = time.time() * 1000
 
         # extracting each data row one by one
-        num_records = 200000
+        num_records = 5000000
         idxes = np.arange(num_records)
         np.random.shuffle(idxes)
         for i in range(num_records):
             idx = idxes[i]
-            record = {
-                "Dimensions": [
-                    {"Name": "id", "Value": str(i)},
-                    {"Name": "track_id", "Value": str(np.random.randint(10))},
-                ],
-                "Time": str(int(current_time - idx / 1000)),
-            }
-
-            record.update(
-                {
-                    "MeasureName": "utilization",
-                    "MeasureValueType": "DOUBLE",
-                    "MeasureValue": str(np.random.randint(100)),
-                }
-            )
-            records.append(record)
+            records.append(self.create_a_slice_record(i, current_time, idx))
         return np.array(records)
 
     def bulk_write_records(self):
         records = self.generate_records()
 
-        if self.num_thread > 1:
-            batches = np.array_split(records, self.num_thread)
-            with ThreadPool(self.num_thread) as pool:
-                pool.map(
-                    partial(self.write_batch, batches), list(range(self.num_thread))
-                )
-        else:
-            self.write_batch(
-                records[
-                    np.newaxis,
-                ],
-                0,
-            )
+        batches = np.array_split(records, self.num_thread)
+        with ThreadPool(self.num_thread) as pool:
+            pool.map(partial(self.write_batch, batches), list(range(self.num_thread)))
 
     def write_batch(self, batches, batch_idx):
         cur_batch = batches[batch_idx]
@@ -120,12 +132,7 @@ class RandomNumberExample:
             # Create base table and ingest records
             self.write_util.create_database(self.database_name)
             self.write_util.create_table(self.database_name, self.table_name)
-            stime = time.time()
             self.bulk_write_records()
-            etime = time.time()
-            print(
-                f"------------------ Bulk write takes {etime-stime} -------------------"
-            )
             # self.run_sample_queries()
 
         finally:
