@@ -17,8 +17,10 @@ from examples.CsvIngestionExample import CsvIngestionExample
 from examples.ScheduledQueryExample import ScheduledQueryExample
 from examples.Cleanup import Cleanup
 
+MILLION = 1000000
 
-def write_random_table(table_id, region, skip_deletion, num_thread):
+
+def write_random_table(table_id, num_records, region, skip_deletion, num_thread):
     session = boto3.Session()
     write_client = session.client(
         "timestream-write",
@@ -38,7 +40,7 @@ def write_random_table(table_id, region, skip_deletion, num_thread):
         skip_deletion,
         num_thread=num_thread,
     )
-    table_example.run()
+    table_example.run(num_records)
 
 
 def main(
@@ -70,20 +72,29 @@ def main(
         )
         basic_example.run(kms_id)
     elif app_type is AppType.RANDOM:
+        num_tables = 1
+        num_processes = min(cpu_count() - 1, num_tables)
+
         stime = time.time()
-        num_tables = 4
-        func_helper = functools.partial(
+        write_random_table_helper = functools.partial(
             write_random_table,
             region=region,
             skip_deletion=skip_deletion,
             num_thread=num_thread,
         )
-        num_processes = min(cpu_count() - 1, num_tables)
-        with Pool(processes=num_processes) as pool:
-            pool.map(
-                func_helper,
-                list(range(1, num_tables + 1)),
-            )
+        base_num_records = int(0.005 * MILLION)
+        for i in range(1, num_tables + 1):
+            write_random_table_helper(i, base_num_records * i)
+        if num_processes == 1:
+            for i in range(1, num_tables + 1):
+                write_random_table_helper(i, base_num_records * i)
+        else:
+            with Pool(processes=num_processes) as pool:
+                pool.starmap(
+                    write_random_table_helper,
+                    [(i, i * base_num_records) for i in range(1, num_tables + 1)],
+                )
+
         etime = time.time()
         print(f"------------------ Bulk write takes {etime-stime} -------------------")
     elif app_type is AppType.CSV:

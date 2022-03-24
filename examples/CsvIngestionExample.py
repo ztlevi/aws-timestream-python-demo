@@ -98,9 +98,9 @@ class CsvIngestionExample:
 
         try:
             # Create base table and ingest records
-            # self.write_util.create_database(self.database_name)
-            # self.write_util.create_table(self.database_name, self.table_name)
-            # self.bulk_write_records(csv_file_path)
+            self.write_util.create_database(self.database_name)
+            self.write_util.create_table(self.database_name, self.table_name)
+            self.bulk_write_records(csv_file_path)
             self.run_sample_queries()
 
         finally:

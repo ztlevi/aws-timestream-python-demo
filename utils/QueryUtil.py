@@ -2,6 +2,8 @@
 import sys
 import traceback
 
+import time
+
 
 class QueryUtil:
     HOSTNAME = "host-24Gju"
@@ -265,22 +267,40 @@ class QueryUtil:
     def run_simple_select_all_query(self):
         self.run_query(QUERY_SELECT_ALL)
 
-    def run_query(self, query_string):
+    def run_query(self, query_string, table=""):
+        rows = []
+        scanned_bytes = 0
+        stime = time.time()
         try:
             page_iterator = self.paginator.paginate(QueryString=query_string)
             for page in page_iterator:
-                self.__parse_query_result(page)
+                rows += self.__parse_query_result(page)
+                scanned_bytes = max(
+                    scanned_bytes, int(page["QueryStatus"]["CumulativeBytesScanned"])
+                )
         except Exception as err:
             print("Exception while running query:", err)
             traceback.print_exc(file=sys.stderr)
+        etime = time.time()
+        print(table, query_string)
+        print(table, "CumulativeBytesScanned: ", scanned_bytes)
+        print(table, f"Total counts {len(rows)}")
+        print(table, f"Query takes {etime-stime}s")
+        return rows
 
     def __parse_query_result(self, query_result):
         column_info = query_result["ColumnInfo"]
 
         print("Metadata: %s" % column_info)
         print("Data: ")
+        rows = []
+
         for row in query_result["Rows"]:
-            print(self.__parse_row(column_info, row))
+            res = self.__parse_row(column_info, row)
+            rows.append(res)
+            if len(rows) < 2:
+                print(res)
+        return rows
 
     def __parse_row(self, column_info, row):
         data = row["Data"]
