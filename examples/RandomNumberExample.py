@@ -138,11 +138,11 @@ class RandomNumberExample:
         step_time = TOTAL_DURATION // num_records * max(1, num_records // 1000)  # ns
         query_string = " ".join(
             [
-                f"WITH t as (SELECT MAX(dur) as dur, BIN(time, {step_time}ns) as bin_ts FROM {self.database_name}.{self.table_name}",
+                f"SELECT MAX(dur) as dur, MAX_BY(id, dur) as id,",
+                f"MAX_BY(measure_value::varchar, dur) as measure_value, BIN(time, {step_time}ns) as bin_ts",
+                f"FROM {self.database_name}.{self.table_name}",
                 f"WHERE time between from_nanoseconds({START_TIME}) - (interval '10' day) and from_nanoseconds({START_TIME}) + (interval '10' day)",
-                f"GROUP BY BIN(time, {step_time}ns) ORDER BY bin_ts ASC)",
-                f"SELECT m.id, m.measure_value::varchar, t.dur, t.bin_ts FROM {self.database_name}.{self.table_name} AS m INNER JOIN t",
-                f"ON m.dur = t.dur",
+                f"GROUP BY BIN(time, {step_time}ns) ORDER BY bin_ts ASC",
             ]
         )
 
